@@ -12,9 +12,13 @@
     "typescript": "^5.5.3"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^0.0.58",
     "@atproto/api": "^0.13.0",
     "@skyware/firehose": "^0.3.1",
     "@skyware/labeler": "^0.1.2-fix.1",
-    "dotenv": "^16.4.5"
+    "ai": "^3.3.28",
+    "canvas": "^2.11.2",
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8"
   }
 }
