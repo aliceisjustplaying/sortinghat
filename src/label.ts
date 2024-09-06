@@ -37,14 +37,12 @@ export const label = async (
     return set;
   }, new Set<string>());
 
-  if (rkey.includes(DELETE)) {
-    const randomHouse = HOUSES[Math.floor(Math.random() * HOUSES.length)];
-    await server
-      .createLabels({ uri: did }, { negate: [randomHouse] })
+  if (rkey.includes(DELETE)) {    await server
+      .createLabels({ uri: did }, { negate: [...labels] })
       .catch((err) => {
         console.log(err);
       })
-      .then(() => console.log(`Deleted label ${randomHouse} for ${did}`));
+      .then(() => console.log(`Deleted labels for ${did}`));
   } else {
     const randomHouse = HOUSES[Math.floor(Math.random() * HOUSES.length)];
     await server
