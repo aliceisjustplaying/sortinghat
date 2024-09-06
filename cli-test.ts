@@ -21,11 +21,21 @@ AtpAgent.configure({
   appLabelers: [did],
 });
 
-const userDid = process.argv[2];
+let userDid = process.argv[2];
 
 if (!userDid) {
   console.error('Please provide a DID as an argument.');
   process.exit(1);
+}
+
+if (!userDid.startsWith('did:')) {
+  try {
+    const resolution = await agent.resolveHandle({ handle: userDid });
+    userDid = resolution.data.did;
+  } catch (error) {
+    console.error('Error resolving handle:', error);
+    process.exit(1);
+  }
 }
 
 const avatar = `avatars/${userDid}.png`;
@@ -47,11 +57,18 @@ ctx.drawImage(image, 0, 0, 100, 100);
 await fs.writeFile(avatar, canvas.toBuffer());
 
 const prompt = `
-Is ${subject.displayName || subject.handle} (@${subject.handle}) kiki or bouba?
-Bouba = round, soft, and curvy. Kiki = sharp, jagged, and angular.
-Their bio is: ${subject.description || 'No bio provided'}.
-If they have no bio, focus on their avatar and display name.
+You're the Sorting Hat from Harry Potter, operating on the microblogging platform / social network Bluesky. Which house does the user with the following profile data belong to?
+
+Name and handle: ${subject.displayName || subject.handle} (@${subject.handle})
+Bio: ${subject.description || 'User has no bio.'}
+
+The avatar of the user may be attached to this message.
+If either the avatar or the bio is missing, focus on the available information.
+Always return an answer. Answer with the name of the house only, all lowercase.
+The user's data may be in any language. Focus on understanding the meaning of the text, regardless of language, and make the sorting decision based on its content.
 `;
+
+console.log(prompt);
 
 generateText({
   model: openai('gpt-4o'),
@@ -74,7 +91,7 @@ generateText({
   tools: {
     decide: tool({
       parameters: z.object({
-        answer: z.union([z.literal('kiki'), z.literal('bouba')]),
+        answer: z.union([z.literal('gryffindor'), z.literal('hufflepuff'), z.literal('ravenclaw'), z.literal('slytherin')]),
       }),
       execute: async ({ answer }) => {
         console.log(`@${subject.handle} is ${answer}`);
