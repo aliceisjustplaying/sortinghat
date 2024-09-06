@@ -2,8 +2,7 @@ import { AppBskyActorDefs, ComAtprotoLabelDefs } from "@atproto/api";
 import {
   DID,
   PORT,
-  LABEL_LIMIT,
-  POSTS,
+  HOUSES,
   SIGNING_KEY,
   DELETE,
 } from "./constants.js";
@@ -39,18 +38,20 @@ export const label = async (
   }, new Set<string>());
 
   if (rkey.includes(DELETE)) {
+    const randomHouse = HOUSES[Math.floor(Math.random() * HOUSES.length)];
     await server
-      .createLabels({ uri: did }, { negate: [...labels] })
+      .createLabels({ uri: did }, { negate: [randomHouse] })
       .catch((err) => {
         console.log(err);
       })
-      .then(() => console.log(`Deleted labels for ${did}`));
-  } else if (labels.size < LABEL_LIMIT && POSTS[rkey]) {
+      .then(() => console.log(`Deleted label ${randomHouse} for ${did}`));
+  } else {
+    const randomHouse = HOUSES[Math.floor(Math.random() * HOUSES.length)];
     await server
-      .createLabel({ uri: did, val: POSTS[rkey] })
+      .createLabel({ uri: did, val: randomHouse })
       .catch((err) => {
         console.log(err);
       })
-      .then(() => console.log(`Labeled ${did} with ${POSTS[rkey]}`));
+      .then(() => console.log(`Labeled ${did} with ${randomHouse}`));
   }
 };

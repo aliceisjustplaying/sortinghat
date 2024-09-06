@@ -35,12 +35,10 @@ const subscribe = async () => {
     commit.ops.forEach(async (op) => {
       if (op.action !== "delete" && AppBskyFeedLike.isRecord(op.record)) {
         if (op.record.subject.uri.includes(DID)) {
-          if (op.record.subject.uri.includes("app.bsky.feed.post")) {
             await label(
               commit.repo,
               op.record.subject.uri.split("/").pop()!,
             ).catch((err) => console.error(err));
-          }
         }
       }
     });
