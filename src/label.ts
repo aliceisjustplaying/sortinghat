@@ -45,7 +45,7 @@ export const label = async (
 
   const query = server.db
     .prepare<unknown[], ComAtprotoLabelDefs.Label>(
-      `SELECT * FROM labels WHERE uri = ?`
+      `SELECT * FROM labels WHERE uri = ? AND neg = false`
     )
     .all(did);
   console.log(`Found ${query.length} existing labels for ${did}`);
