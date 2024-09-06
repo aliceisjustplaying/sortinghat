@@ -50,24 +50,30 @@ export const label = async (
     .all(did);
   console.log(`Found ${query.length} existing labels for ${did}`);
 
-  const currentLabel = query.find(
-    (label) => !label.neg && HOUSES.includes(label.val)
-  );
-  console.log(`Current house label: ${currentLabel ? currentLabel.val : 'None'}`);
+  const labels = query.reduce((set, label) => {
+    if (!label.neg) set.add(label.val);
+    else set.delete(label.val);
+    return set;
+  }, new Set<string>());
+
+  // const currentLabel = query.find(
+  //   (label) => !label.neg && HOUSES.includes(label.val)
+  // );
+  // console.log(`Current house label: ${currentLabel ? currentLabel.val : 'None'}`);
 
   if (rkey.includes(DELETE)) {
     console.log(`Deleting label for ${did}`);
-    if (currentLabel) {
+    if (labels.size > 0) {
       await server
-        .createLabels({ uri: did }, { negate: [currentLabel.val] })
+        .createLabels({ uri: did }, { negate: [...labels] })
         .catch((err) => console.error(`Error deleting label: ${err}`))
         .then(() => console.log(`Deleted label for ${did}`));
     } else {
       console.log(`No label to delete for ${did}`);
     }
   } else {
-    if (currentLabel) {
-      console.log(`${did} already has a house: ${currentLabel.val}`);
+    if (labels.size > 0) {
+      console.log(`${did} already has a house: ${[...labels].join(', ')}`);
       return;
     }
 
