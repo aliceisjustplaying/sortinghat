@@ -1,12 +1,6 @@
-import { AppBskyActorDefs, ComAtprotoLabelDefs } from "@atproto/api";
-import {
-  DID,
-  PORT,
-  HOUSES,
-  SIGNING_KEY,
-  DELETE,
-} from "./constants.js";
-import { LabelerServer } from "@skyware/labeler";
+import { AppBskyActorDefs, ComAtprotoLabelDefs } from '@atproto/api';
+import { DID, PORT, HOUSES, SIGNING_KEY, DELETE } from './constants.js';
+import { LabelerServer } from '@skyware/labeler';
 
 const server = new LabelerServer({ did: DID, signingKey: SIGNING_KEY });
 
@@ -18,18 +12,10 @@ server.start(PORT, (error, address) => {
   }
 });
 
-export const label = async (
-  subject: string | AppBskyActorDefs.ProfileView,
-  rkey: string,
-) => {
+export const label = async (subject: string | AppBskyActorDefs.ProfileView, rkey: string) => {
   const did = AppBskyActorDefs.isProfileView(subject) ? subject.did : subject;
 
-  const query = server.db
-    .prepare<
-      unknown[],
-      ComAtprotoLabelDefs.Label
-    >(`SELECT * FROM labels WHERE uri = ?`)
-    .all(did);
+  const query = server.db.prepare<unknown[], ComAtprotoLabelDefs.Label>(`SELECT * FROM labels WHERE uri = ?`).all(did);
 
   const labels = query.reduce((set, label) => {
     if (!label.neg) set.add(label.val);
@@ -37,7 +23,8 @@ export const label = async (
     return set;
   }, new Set<string>());
 
-  if (rkey.includes(DELETE)) {    await server
+  if (rkey.includes(DELETE)) {
+    await server
       .createLabels({ uri: did }, { negate: [...labels] })
       .catch((err) => {
         console.log(err);
