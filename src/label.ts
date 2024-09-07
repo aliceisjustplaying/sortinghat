@@ -95,7 +95,7 @@ async function handleAddLabel(did: string) {
     const prompt = createPrompt(data);
 
     await generateText({
-      model: openai('gpt-4o'),
+      model: openai('gpt-4o-mini'),
       messages: [
         {
           role: 'user',
@@ -133,7 +133,7 @@ async function handleAddLabel(did: string) {
 }
 
 async function prepareAvatar(subject: AppBskyActorDefs.ProfileView) {
-  const size = 100;
+  const size = 150;
   const canvas = createCanvas(size, size);
   const ctx = canvas.getContext('2d');
 
