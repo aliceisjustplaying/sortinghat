@@ -53,13 +53,13 @@ export const label = async (subject: string | AppBskyActorDefs.ProfileView, rkey
 };
 
 async function canPerformLabelOperation(did: string): Promise<boolean> {
-  // const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  // const query = server.db
-  //   .prepare<unknown[], { count: number }>(`SELECT COUNT(*) as count FROM labels WHERE uri = ? AND cts > ?`)
-  //   .get(did, thirtyDaysAgo.toISOString())!;
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const query = server.db
+    .prepare<unknown[], { count: number }>(`SELECT COUNT(*) as count FROM labels WHERE uri = ? AND cts > ?`)
+    .get(did, thirtyDaysAgo.toISOString())!;
 
-  // return query.count < 2;
-  return true;
+  return query.count < 2;
+  // return true;
 }
 
 async function handleDeleteLabels(did: string, labels: Set<string>) {
