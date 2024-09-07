@@ -132,9 +132,9 @@ generateText({
         {
           type: 'image',
           image: canvas.toBuffer(),
-          // experimental_providerMetadata: {
-          //   openai: { imageDetail: 'low' },
-          // },
+          experimental_providerMetadata: {
+            openai: { imageDetail: 'low' },
+          },
         },
       ],
     },
