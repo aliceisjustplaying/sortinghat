@@ -72,9 +72,7 @@ Bio: ${subject.description || 'User has no bio.'}
 console.log(prompt);
 
 generateText({
-  model: openai('gpt-4o', {
-    
-  }),
+  model: openai('gpt-4o', {}),
   messages: [
     {
       role: 'user',
@@ -97,7 +95,12 @@ generateText({
   tools: {
     decide: tool({
       parameters: z.object({
-        answer: z.union([z.literal('gryffindor'), z.literal('hufflepuff'), z.literal('ravenclaw'), z.literal('slytherin')]),
+        answer: z.union([
+          z.literal('gryffindor'),
+          z.literal('hufflepuff'),
+          z.literal('ravenclaw'),
+          z.literal('slytherin'),
+        ]),
       }),
       execute: async ({ answer }) => {
         console.log(`@${subject.handle} is ${answer}`);

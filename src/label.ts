@@ -28,6 +28,8 @@ await agent.login({
   password: process.env.BSKY_PASSWORD!,
 });
 
+console.log('Logged in to Bluesky');
+
 export const label = async (subject: string | AppBskyActorDefs.ProfileView, rkey: string) => {
   const did = AppBskyActorDefs.isProfileView(subject) ? subject.did : subject;
 
@@ -52,21 +54,22 @@ export const label = async (subject: string | AppBskyActorDefs.ProfileView, rkey
 
 async function canPerformLabelOperation(did: string): Promise<boolean> {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const query = server.db.prepare<unknown[], { count: number }>(
-    `SELECT COUNT(*) as count FROM labels WHERE uri = ? AND cts > ?`
-  ).get(did, thirtyDaysAgo.toISOString())!;
+  const query = server.db
+    .prepare<unknown[], { count: number }>(`SELECT COUNT(*) as count FROM labels WHERE uri = ? AND cts > ?`)
+    .get(did, thirtyDaysAgo.toISOString())!;
 
   return query.count < 2;
 }
 
 async function handleDeleteLabels(did: string, labels: Set<string>) {
   try {
-    if (labels.size > 0 && await canPerformLabelOperation(did)) {
+    if (labels.size > 0 && (await canPerformLabelOperation(did))) {
       await server.createLabels({ uri: did }, { negate: [...labels] });
       console.log(`Deleted labels for ${did}`);
     } else if (labels.size === 0) {
       console.log(`No labels to delete for ${did}`);
     } else {
+      console.log('THIS SHOULD NOT HAPPEN!!');
       console.log(`Cannot delete labels for ${did}: 30-day limit reached`);
     }
   } catch (err) {
@@ -76,7 +79,7 @@ async function handleDeleteLabels(did: string, labels: Set<string>) {
 
 async function handleAddLabel(did: string) {
   try {
-    if (!await canPerformLabelOperation(did)) {
+    if (!(await canPerformLabelOperation(did))) {
       console.log(`Cannot add label for ${did}: 30-day limit reached`);
       return;
     }
