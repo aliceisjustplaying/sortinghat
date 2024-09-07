@@ -85,7 +85,10 @@ async function handleAddLabel(did: string) {
     }
 
     const { data } = await agent.getProfile({ actor: did });
-    if (!data) throw new Error('Profile not found');
+    if (!data) {
+      console.log('OOPS: Profile not found and/or we could not fetch it');
+      return;
+    }
 
     const avatar = await prepareAvatar(data);
     const prompt = createPrompt(data);
