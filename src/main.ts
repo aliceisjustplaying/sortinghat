@@ -1,47 +1,66 @@
-import { AppBskyFeedLike } from '@atproto/api';
-import { Firehose } from '@skyware/firehose';
 import { label } from './label.js';
-import { DID } from './constants.js';
+import { DID, RELAY } from './constants.js';
+import { EventStream } from './types.js';
 import fs from 'node:fs';
+import { URL } from 'node:url';
+import WebSocket from 'ws';
 
-const subscribe = async () => {
-  let cursorFirehose = 0;
+const subscribe = () => {
+  let cursor = 0;
   let intervalID: NodeJS.Timeout;
-  const cursorFile = fs.readFileSync('cursor.txt', 'utf8');
+  let cursorFile: string;
 
-  const firehose = new Firehose({ cursor: cursorFile ?? '' });
-  if (cursorFile) console.log(`Initiate firehose at cursor ${cursorFile}`);
+  try {
+    cursorFile = fs.readFileSync('cursor.txt', 'utf8');
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      cursorFile = (BigInt(Date.now()) * 1000n).toString();
+      fs.writeFileSync('cursor.txt', cursorFile, 'utf8');
+    } else {
+      console.error(error);
+      process.exit(1);
+    }
+  }
 
-  firehose.on('error', ({ cursor, error }) => {
-    console.log(`Firehose errored on cursor: ${cursor}`, error);
+  const relayURL = new URL(RELAY);
+  relayURL.searchParams.set('cursor', cursorFile);
+  const ws = new WebSocket(relayURL.toString());
+  console.log(`Connected to Jetstream at cursor ${cursorFile}`);
+
+  ws.on('error', (err) => {
+    console.error(err);
   });
 
-  firehose.on('open', () => {
+  ws.on('open', () => {
     intervalID = setInterval(() => {
-      const timestamp = new Date().toISOString();
-      console.log(`${timestamp} cursor: ${cursorFirehose}`);
-      fs.writeFile('cursor.txt', cursorFirehose.toString(), (err) => {
-        if (err) console.error(err);
+      console.log(`${new Date().toISOString()}: ${cursor}`);
+      fs.writeFile('cursor.txt', cursor.toString(), (err) => {
+        if (err) console.log(err);
       });
     }, 60000);
   });
 
-  firehose.on('close', () => {
+  ws.on('close', () => {
     clearInterval(intervalID);
   });
 
-  firehose.on('commit', (commit) => {
-    cursorFirehose = commit.seq;
-    commit.ops.forEach(async (op) => {
-      if (op.action !== 'delete' && AppBskyFeedLike.isRecord(op.record)) {
-        if (op.record.subject.uri.includes(DID)) {
-          await label(commit.repo, op.record.subject.uri.split('/').pop()!).catch((err) => console.error(err));
+  ws.on('message', (data: WebSocket.RawData) => {
+    if (data instanceof Buffer) {
+      const event: EventStream = JSON.parse(data.toString()) as EventStream;
+      cursor = event.time_us;
+
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (event.commit?.record?.$type === 'app.bsky.feed.like') {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (event.commit?.record?.subject?.uri?.includes(`at://${DID}/app.bsky.labeler.service/self`)) {
+          label(event.did, event.commit.record.subject.uri.split('/').pop()!).catch((error: unknown) => {
+            console.error(`Unexpected error labeling ${event.did}:`);
+            console.error(error);
+          });
         }
       }
-    });
+    }
   });
-
-  firehose.start();
 };
 
 subscribe();

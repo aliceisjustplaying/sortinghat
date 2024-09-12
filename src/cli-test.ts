@@ -61,7 +61,7 @@ await fs.writeFile(avatar, canvas.toBuffer());
 // Focus on the available information. If the avatar is not available, a 1x1 pixel white image is provided instead as a placeholder. Disregard the placeholder and focus on the user's data.
 // Always return an answer — house name only, all lowercase.
 // The user's data may be in any language. Focus on the meaning, not just the surface content.
-// Consider traits for all houses, not just intellect. 
+// Consider traits for all houses, not just intellect.
 // You're strongly mischievous and enjoy sorting based on whims, not always strictly following the user's traits; imagine as if you're a person who likes to play tricks on people.
 
 // The user's data is as follows:
@@ -69,7 +69,6 @@ await fs.writeFile(avatar, canvas.toBuffer());
 // Name: ${subject.displayName || subject.handle} (@${subject.handle})
 // Bio: ${subject.description || 'User has no bio.'}
 // `;
-
 
 const prompt = `
 You're the Sorting Hat from Harry Potter. Which house does the user with the profile data at the end of this message belong to?
@@ -85,7 +84,6 @@ The user's data is as follows:
 Name: ${subject.displayName || subject.handle} (@${subject.handle})
 Bio: ${subject.description || 'User has no bio.'}
 `;
-
 
 console.log(prompt);
 

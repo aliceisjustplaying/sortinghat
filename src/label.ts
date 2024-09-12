@@ -52,7 +52,7 @@ export const label = async (subject: string | AppBskyActorDefs.ProfileView, rkey
   }
 };
 
-async function canPerformLabelOperation(did: string): Promise<boolean> {
+function canPerformLabelOperation(did: string): boolean {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const query = server.db
     .prepare<unknown[], { count: number }>(`SELECT COUNT(*) as count FROM labels WHERE uri = ? AND cts > ?`)
@@ -64,7 +64,7 @@ async function canPerformLabelOperation(did: string): Promise<boolean> {
 
 async function handleDeleteLabels(did: string, labels: Set<string>) {
   try {
-    if (labels.size > 0 && (await canPerformLabelOperation(did))) {
+    if (labels.size > 0 && canPerformLabelOperation(did)) {
       await server.createLabels({ uri: did }, { negate: [...labels] });
       console.log(`Deleted labels for ${did}`);
     } else if (labels.size === 0) {
@@ -80,14 +80,17 @@ async function handleDeleteLabels(did: string, labels: Set<string>) {
 
 async function handleAddLabel(did: string) {
   try {
-    if (!(await canPerformLabelOperation(did))) {
-      console.log(`Cannot add label for ${did}: 30-day limit reached`);
+    if (!canPerformLabelOperation(did)) {
+      console.error(`Cannot add label for ${did}: 30-day limit reached`);
       return;
     }
 
-    const { data } = await agent.getProfile({ actor: did });
-    if (!data) {
-      console.log('OOPS: Profile not found and/or we could not fetch it');
+    let data: AppBskyActorDefs.ProfileView;
+    try {
+      data = (await agent.getProfile({ actor: did })).data;
+    } catch (err) {
+      console.error('OOPS: Profile not found and/or we could not fetch it');
+      console.error(err);
       return;
     }
 
@@ -164,7 +167,7 @@ You're strongly mischievous and enjoy sorting based on whims, not always strictl
 
 The user's data is as follows:
 
-Name: ${subject.displayName || subject.handle} (@${subject.handle})
-Bio: ${subject.description || 'User has no bio.'}
+Name: ${subject.displayName ?? subject.handle} (@${subject.handle})
+Bio: ${subject.description ?? 'User has no bio.'}
 `;
 }

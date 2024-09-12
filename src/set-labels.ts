@@ -6,7 +6,7 @@ const LABELS = [
   {
     identifier: 'ravenclaw',
     enName: 'Ravenclaw 🦅',
-    enDescription: 'Wise, creative, and curious.', 
+    enDescription: 'Wise, creative, and curious.',
     ptName: 'Corvinal 🦅',
     ptDescription: 'Sábio, criativo e curioso.',
   },
@@ -31,7 +31,7 @@ const LABELS = [
     ptName: 'Lufa-Lufa 🦡',
     ptDescription: 'Leal, trabalhador e justo.',
   },
-]
+];
 
 const loginCredentials: LoginCredentials = {
   identifier: process.env.BSKY_IDENTIFIER!,
@@ -41,27 +41,27 @@ const loginCredentials: LoginCredentials = {
 const labelDefinitions: ComAtprotoLabelDefs.LabelValueDefinition[] = [];
 
 for (const label of LABELS) {
-    const labelValueDefinition: ComAtprotoLabelDefs.LabelValueDefinition = {
-      identifier: label.identifier,
-      severity: 'inform',
-      blurs: 'none',
-      defaultSetting: 'warn',
-      adultOnly: false,
-      locales: [
-        {
-          lang: 'en',
-          name: label.enName,
-          description: label.enDescription,
-        },
-        {
-          lang: 'pt-BR',
-          name: label.ptName,
-          description: label.ptDescription,
-        },
-      ],
-    };
+  const labelValueDefinition: ComAtprotoLabelDefs.LabelValueDefinition = {
+    identifier: label.identifier,
+    severity: 'inform',
+    blurs: 'none',
+    defaultSetting: 'warn',
+    adultOnly: false,
+    locales: [
+      {
+        lang: 'en',
+        name: label.enName,
+        description: label.enDescription,
+      },
+      {
+        lang: 'pt-BR',
+        name: label.ptName,
+        description: label.ptDescription,
+      },
+    ],
+  };
 
-    labelDefinitions.push(labelValueDefinition);
+  labelDefinitions.push(labelValueDefinition);
 }
 
 await setLabelerLabelDefinitions(loginCredentials, labelDefinitions);
