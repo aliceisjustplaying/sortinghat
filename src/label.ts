@@ -43,6 +43,10 @@ export const label = async (subject: string | AppBskyActorDefs.ProfileView, rkey
     return set;
   }, new Set<string>());
 
+  console.log("labels: ", Array.from(labels));
+  
+  console.log("got an rkey: ", rkey);
+
   if (rkey.includes(DELETE)) {
     await handleDeleteLabels(did, labels);
   } else if (labels.size === 0) {

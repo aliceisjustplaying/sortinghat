@@ -33,11 +33,11 @@ const subscribe = () => {
 
   ws.on('open', () => {
     intervalID = setInterval(() => {
-      console.log(`${new Date().toISOString()}: ${cursor}`);
+      console.log(`Cursor at ${new Date().toISOString()}: ${cursor}`);
       fs.writeFile('cursor.txt', cursor.toString(), (err) => {
         if (err) console.log(err);
       });
-    }, 60000);
+    }, 5000);
   });
 
   ws.on('close', () => {
@@ -52,7 +52,8 @@ const subscribe = () => {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (event.commit?.record?.$type === 'app.bsky.feed.like') {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (event.commit?.record?.subject?.uri?.includes(`at://${DID}/app.bsky.labeler.service/self`)) {
+        //if (event.commit?.record?.subject?.uri?.includes(`at://${DID}/app.bsky.labeler.service/self`)) {
+        if (event.commit?.record?.subject?.uri?.includes(DID)) {
           label(event.did, event.commit.record.subject.uri.split('/').pop()!).catch((error: unknown) => {
             console.error(`Unexpected error labeling ${event.did}:`);
             console.error(error);
