@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^0.0.51",
+    "@ai-sdk/openai": "^0.0.63",
     "@atproto/api": "^0.13.8",
     "@skyware/jetstream": "^0.1.6",
     "@skyware/labeler": "^0.1.7",
