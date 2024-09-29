@@ -1,6 +1,6 @@
 import { AppBskyActorDefs, ComAtprotoLabelDefs } from '@atproto/api';
 import { DELETE } from './constants.js';
-import { DID, PORT, SIGNING_KEY } from './config.js';
+import { BSKY_IDENTIFIER, BSKY_PASSWORD, DID, PORT, SIGNING_KEY } from './config.js';
 import { LabelerServer } from '@skyware/labeler';
 import { generateText, tool } from 'ai';
 import { openai } from '@ai-sdk/openai';
@@ -12,22 +12,13 @@ import 'dotenv/config';
 
 export const labelerServer = new LabelerServer({ did: DID, signingKey: SIGNING_KEY });
 
-console.log('Starting labeler server on port ', PORT);
-labelerServer.start(PORT, (error, address) => {
-  if (error) {
-    console.error(error);
-  } else {
-    console.log(`Labeler server listening on ${address}`);
-  }
-});
-
 const agent = new AtpAgent({
-  service: process.env.BSKY_SERVICE ?? 'https://bsky.social',
+  service: 'https://bsky.social',
 });
 
 await agent.login({
-  identifier: process.env.BSKY_IDENTIFIER!,
-  password: process.env.BSKY_PASSWORD!,
+  identifier: BSKY_IDENTIFIER,
+  password: BSKY_PASSWORD,
 });
 
 console.log('Logged in to Bluesky');
