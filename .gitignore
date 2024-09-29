@@ -4,3 +4,4 @@ cursor.txt
 *.log
 labels.db*
 avatars/*.png
+bun.lockb

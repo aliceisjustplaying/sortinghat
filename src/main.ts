@@ -1,67 +1,92 @@
-import { label } from './label.js';
-import { DID, RELAY } from './constants.js';
-import { EventStream } from './types.js';
+import { CommitCreateEvent, Jetstream } from '@skyware/jetstream';
 import fs from 'node:fs';
-import { URL } from 'node:url';
-import WebSocket from 'ws';
 
-const subscribe = () => {
-  let cursor = 0;
-  let intervalID: NodeJS.Timeout;
-  let cursorFile: string;
+import { CURSOR_UPDATE_INTERVAL, DID, FIREHOSE_URL, METRICS_PORT, PORT, WANTED_COLLECTION } from './config.js';
+import { label, labelerServer } from './label.js';
+import logger from './logger.js';
+import { startMetricsServer } from './metrics.js';
 
-  try {
-    cursorFile = fs.readFileSync('cursor.txt', 'utf8');
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      cursorFile = (BigInt(Date.now()) * 1000n).toString();
-      fs.writeFileSync('cursor.txt', cursorFile, 'utf8');
-    } else {
-      console.error(error);
-      process.exit(1);
-    }
+let cursor = 0;
+let cursorUpdateInterval: NodeJS.Timeout;
+
+try {
+  logger.info('Trying to read cursor from cursor.txt...');
+  cursor = Number(fs.readFileSync('cursor.txt', 'utf8'));
+  logger.info(`Cursor found: ${cursor} (${new Date(cursor / 1000).toISOString()})`);
+} catch (error) {
+  if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+    logger.info(
+      `Cursor not found in cursor.txt, setting cursor to: ${cursor} (${new Date(cursor / 1000).toISOString()})`,
+    );
+    fs.writeFileSync('cursor.txt', cursor.toString(), 'utf8');
+  } else {
+    logger.error(error);
+    process.exit(1);
   }
+}
 
-  const relayURL = new URL(RELAY);
-  relayURL.searchParams.set('cursor', cursorFile);
-  const ws = new WebSocket(relayURL.toString());
-  console.log(`Connected to Jetstream at cursor ${cursorFile}`);
+const jetstream = new Jetstream({
+  wantedCollections: [WANTED_COLLECTION],
+  endpoint: FIREHOSE_URL,
+  cursor: cursor,
+});
 
-  ws.on('error', (err) => {
-    console.error(err);
-  });
+jetstream.on('open', () => {
+  logger.info(`Connected to Jetstream at ${FIREHOSE_URL}`);
+  cursorUpdateInterval = setInterval(() => {
+    logger.info(`Cursor updated to: ${cursor} (${new Date(cursor / 1000).toISOString()})`);
+    fs.writeFile('cursor.txt', cursor.toString(), (err) => {
+      if (err) logger.error(err);
+    });
+  }, CURSOR_UPDATE_INTERVAL);
+});
 
-  ws.on('open', () => {
-    intervalID = setInterval(() => {
-      console.log(`Cursor at ${new Date().toISOString()}: ${cursor}`);
-      fs.writeFile('cursor.txt', cursor.toString(), (err) => {
-        if (err) console.log(err);
-      });
-    }, 5000);
-  });
+jetstream.on('close', () => {
+  clearInterval(cursorUpdateInterval);
+  logger.info('Jetstream connection closed.');
+});
 
-  ws.on('close', () => {
-    clearInterval(intervalID);
-  });
+jetstream.on('error', (error) => {
+  logger.error(`Jetstream error: ${error.message}`);
+});
 
-  ws.on('message', (data: WebSocket.RawData) => {
-    if (data instanceof Buffer) {
-      const event: EventStream = JSON.parse(data.toString()) as EventStream;
-      cursor = event.time_us;
+jetstream.onCreate(WANTED_COLLECTION, (event: CommitCreateEvent<typeof WANTED_COLLECTION>) => {
+  cursor = event.time_us;
+   
+  if (event.commit?.record?.subject?.uri?.includes(DID)) {
+    label(event.did, event.commit.record.subject.uri.split('/').pop()).catch((error: unknown) => {
+      logger.error(`Unexpected error labeling ${event.did}:`);
+      logger.error(error);
+    });
+  }
+});
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (event.commit?.record?.$type === 'app.bsky.feed.like') {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        //if (event.commit?.record?.subject?.uri?.includes(`at://${DID}/app.bsky.labeler.service/self`)) {
-        if (event.commit?.record?.subject?.uri?.includes(DID)) {
-          label(event.did, event.commit.record.subject.uri.split('/').pop()!).catch((error: unknown) => {
-            console.error(`Unexpected error labeling ${event.did}:`);
-            console.error(error);
-          });
-        }
-      }
-    }
-  });
-};
+const metricsServer = startMetricsServer(METRICS_PORT);
 
-subscribe();
+labelerServer.start(PORT, (error, address) => {
+  if (error) {
+    logger.error('Error starting server: %s', error);
+  } else {
+    logger.info(`Labeler server listening on ${address}`);
+  }
+});
+
+jetstream.start();
+
+function shutdown() {
+  setTimeout(() => {
+    logger.error('Forcing shutdown...');
+    process.exit(1);
+  }, 60000);
+
+  logger.info('Shutting down gracefully...');
+  jetstream.close();
+  labelerServer.stop();
+  metricsServer.close();
+  clearInterval(cursorUpdateInterval);
+  fs.writeFileSync('cursor.txt', cursor.toString(), 'utf8');
+  process.exit(0);
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

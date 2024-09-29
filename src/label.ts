@@ -1,5 +1,6 @@
 import { AppBskyActorDefs, ComAtprotoLabelDefs } from '@atproto/api';
-import { DID, PORT, SIGNING_KEY, DELETE } from './constants.js';
+import { DELETE } from './constants.js';
+import { DID, PORT, SIGNING_KEY } from './config.js';
 import { LabelerServer } from '@skyware/labeler';
 import { generateText, tool } from 'ai';
 import { openai } from '@ai-sdk/openai';
@@ -9,9 +10,9 @@ import { AtpAgent } from '@atproto/api';
 import fs from 'node:fs/promises';
 import 'dotenv/config';
 
-const server = new LabelerServer({ did: DID, signingKey: SIGNING_KEY });
+export const labelerServer = new LabelerServer({ did: DID, signingKey: SIGNING_KEY });
 
-server.start(PORT, (error, address) => {
+labelerServer.start(PORT, (error, address) => {
   if (error) {
     console.error(error);
   } else {
@@ -35,7 +36,7 @@ export const label = async (subject: string | AppBskyActorDefs.ProfileView, rkey
 
   console.log(`Processing label for ${did}`);
 
-  const query = server.db.prepare<unknown[], ComAtprotoLabelDefs.Label>(`SELECT * FROM labels WHERE uri = ?`).all(did);
+  const query = labelerServer.db.prepare<unknown[], ComAtprotoLabelDefs.Label>(`SELECT * FROM labels WHERE uri = ?`).all(did);
 
   const labels = query.reduce((set, label) => {
     if (!label.neg) set.add(label.val);
@@ -69,7 +70,7 @@ function canPerformLabelOperation(did: string): boolean {
 async function handleDeleteLabels(did: string, labels: Set<string>) {
   try {
     if (labels.size > 0 && canPerformLabelOperation(did)) {
-      await server.createLabels({ uri: did }, { negate: [...labels] });
+      await labelerServer.createLabels({ uri: did }, { negate: [...labels] });
       console.log(`Deleted labels for ${did}`);
     } else if (labels.size === 0) {
       console.log(`No labels to delete for ${did}`);
@@ -128,7 +129,7 @@ async function handleAddLabel(did: string) {
             ]),
           }),
           execute: async ({ answer }) => {
-            await server.createLabel({ uri: did, val: answer });
+            await labelerServer.createLabel({ uri: did, val: answer });
             console.log(`Labeled ${did} with ${answer}`);
           },
         }),

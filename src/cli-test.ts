@@ -6,17 +6,18 @@ import { z } from 'zod';
 import { AtpAgent } from '@atproto/api';
 import 'dotenv/config';
 import { anthropic } from '@ai-sdk/anthropic';
+import { BSKY_IDENTIFIER, BSKY_PASSWORD } from './config.js';
 
 const agent = new AtpAgent({
-  service: process.env.BSKY_SERVICE ?? 'https://bsky.social',
+  service: 'https://bsky.social',
 });
 
 await agent.login({
-  identifier: process.env.BSKY_IDENTIFIER!,
-  password: process.env.BSKY_PASSWORD!,
+  identifier: BSKY_IDENTIFIER,
+  password: BSKY_PASSWORD,
 });
 
-const did = agent.session!.did;
+// const did = agent.session!.did;
 
 let userDid = process.argv[2];
 
@@ -38,6 +39,7 @@ if (!userDid.startsWith('did:')) {
 const avatar = `avatars/${userDid}.png`;
 
 const { data } = await agent.getProfile({ actor: userDid });
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 if (!data) throw new Error('Profile not found');
 const subject = data;
 
@@ -81,13 +83,13 @@ You're mischievous and enjoy sorting based on whims, not always strictly followi
 
 The user's data is as follows:
 
-Name: ${subject.displayName || subject.handle} (@${subject.handle})
-Bio: ${subject.description || 'User has no bio.'}
+Name: ${subject.displayName ?? subject.handle} (@${subject.handle})
+Bio: ${subject.description ?? 'User has no bio.'}
 `;
 
 console.log(prompt);
 
-generateText({
+void generateText({
   model: openai('gpt-4o-mini'),
   // model: anthropic('claude-3-haiku-20240307'),
   messages: [
