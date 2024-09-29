@@ -12,6 +12,7 @@ import 'dotenv/config';
 
 export const labelerServer = new LabelerServer({ did: DID, signingKey: SIGNING_KEY });
 
+console.log('Starting labeler server on port ', PORT);
 labelerServer.start(PORT, (error, address) => {
   if (error) {
     console.error(error);
@@ -36,7 +37,9 @@ export const label = async (subject: string | AppBskyActorDefs.ProfileView, rkey
 
   console.log(`Processing label for ${did}`);
 
-  const query = labelerServer.db.prepare<unknown[], ComAtprotoLabelDefs.Label>(`SELECT * FROM labels WHERE uri = ?`).all(did);
+  const query = labelerServer.db
+    .prepare<unknown[], ComAtprotoLabelDefs.Label>(`SELECT * FROM labels WHERE uri = ?`)
+    .all(did);
 
   const labels = query.reduce((set, label) => {
     if (!label.neg) set.add(label.val);
@@ -44,9 +47,9 @@ export const label = async (subject: string | AppBskyActorDefs.ProfileView, rkey
     return set;
   }, new Set<string>());
 
-  console.log("labels: ", Array.from(labels));
-  
-  console.log("got an rkey: ", rkey);
+  console.log('labels: ', Array.from(labels));
+
+  console.log('got an rkey: ', rkey);
 
   if (rkey.includes(DELETE)) {
     await handleDeleteLabels(did, labels);

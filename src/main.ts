@@ -52,7 +52,7 @@ jetstream.on('error', (error) => {
 
 jetstream.onCreate(WANTED_COLLECTION, (event: CommitCreateEvent<typeof WANTED_COLLECTION>) => {
   cursor = event.time_us;
-   
+
   if (event.commit?.record?.subject?.uri?.includes(DID)) {
     label(event.did, event.commit.record.subject.uri.split('/').pop()).catch((error: unknown) => {
       logger.error(`Unexpected error labeling ${event.did}:`);
