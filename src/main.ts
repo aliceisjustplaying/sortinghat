@@ -9,15 +9,17 @@ import { startMetricsServer } from './metrics.js';
 let cursor = 0;
 let cursorUpdateInterval: NodeJS.Timeout;
 
+function epochUsToDateTime(cursor: number): string {
+  return new Date(cursor / 1000).toISOString();
+}
+
 try {
   logger.info('Trying to read cursor from cursor.txt...');
   cursor = Number(fs.readFileSync('cursor.txt', 'utf8'));
-  logger.info(`Cursor found: ${cursor} (${new Date(cursor / 1000).toISOString()})`);
+  logger.info(`Cursor found: ${cursor} (${epochUsToDateTime(cursor)})`);
 } catch (error) {
   if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-    logger.info(
-      `Cursor not found in cursor.txt, setting cursor to: ${cursor} (${new Date(cursor / 1000).toISOString()})`,
-    );
+    logger.info(`Cursor not found in cursor.txt, setting cursor to: ${cursor} (${epochUsToDateTime(cursor)})`);
     fs.writeFileSync('cursor.txt', cursor.toString(), 'utf8');
   } else {
     logger.error(error);
@@ -32,12 +34,16 @@ const jetstream = new Jetstream({
 });
 
 jetstream.on('open', () => {
-  logger.info(`Connected to Jetstream at ${FIREHOSE_URL}`);
+  logger.info(
+    `Connected to Jetstream at ${FIREHOSE_URL} with cursor ${jetstream.cursor} (${epochUsToDateTime(jetstream.cursor!)})`,
+  );
   cursorUpdateInterval = setInterval(() => {
-    logger.info(`Cursor updated to: ${cursor} (${new Date(cursor / 1000).toISOString()})`);
-    fs.writeFile('cursor.txt', cursor.toString(), (err) => {
-      if (err) logger.error(err);
-    });
+    if (jetstream.cursor) {
+      logger.info(`Cursor updated to: ${jetstream.cursor} (${epochUsToDateTime(jetstream.cursor)})`);
+      fs.writeFile('cursor.txt', jetstream.cursor.toString(), (err) => {
+        if (err) logger.error(err);
+      });
+    }
   }, CURSOR_UPDATE_INTERVAL);
 });
 
@@ -51,12 +57,10 @@ jetstream.on('error', (error) => {
 });
 
 jetstream.onCreate(WANTED_COLLECTION, (event: CommitCreateEvent<typeof WANTED_COLLECTION>) => {
-  cursor = event.time_us;
-
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (event.commit?.record?.subject?.uri?.includes(DID)) {
-    label(event.did, event.commit.record.subject.uri.split('/').pop()).catch((error: unknown) => {
-      logger.error(`Unexpected error labeling ${event.did}:`);
-      logger.error(error);
+    label(event.did, event.commit.record.subject.uri.split('/').pop()!).catch((error: unknown) => {
+      logger.error(`Unexpected error labeling ${event.did}: ${error}`);
     });
   }
 });
@@ -73,19 +77,18 @@ labelerServer.start(PORT, (error, address) => {
 
 jetstream.start();
 
+// this doesn't work properly, need to research why
 function shutdown() {
-  setTimeout(() => {
-    logger.error('Forcing shutdown...');
+  try {
+    logger.info('Shutting down gracefully...');
+    fs.writeFileSync('cursor.txt', jetstream.cursor!.toString(), 'utf8');
+    jetstream.close();
+    labelerServer.stop();
+    metricsServer.close();
+  } catch (error) {
+    logger.error(`Error shutting down gracefully: ${error}`);
     process.exit(1);
-  }, 60000);
-
-  logger.info('Shutting down gracefully...');
-  jetstream.close();
-  labelerServer.stop();
-  metricsServer.close();
-  clearInterval(cursorUpdateInterval);
-  fs.writeFileSync('cursor.txt', cursor.toString(), 'utf8');
-  process.exit(0);
+  }
 }
 
 process.on('SIGINT', shutdown);
