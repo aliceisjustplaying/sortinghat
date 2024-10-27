@@ -1,5 +1,5 @@
 import { AppBskyActorDefs, ComAtprotoLabelDefs } from '@atproto/api';
-import { DELETE } from './constants.js';
+import { DELETE, HOUSES } from './constants.js';
 import { BSKY_IDENTIFIER, BSKY_PASSWORD, DID, PORT, SIGNING_KEY } from './config.js';
 import { LabelerServer } from '@skyware/labeler';
 import { generateText, tool } from 'ai';
@@ -95,40 +95,51 @@ async function handleAddLabel(did: string) {
 
     const avatar = await prepareAvatar(data);
     const prompt = createPrompt(data);
+    const coinFlip = Math.floor(Math.random() * 2);
 
-    await generateText({
-      model: openai('gpt-4o-mini'),
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            {
-              type: 'image',
-              image: avatar.toBuffer(),
-              experimental_providerMetadata: { openai: { imageDetail: 'low' } },
-            },
-          ],
-        },
-      ],
-      toolChoice: 'required',
-      tools: {
-        decide: tool({
-          parameters: z.object({
-            answer: z.union([
-              z.literal('gryffindor'),
-              z.literal('hufflepuff'),
-              z.literal('ravenclaw'),
-              z.literal('slytherin'),
-            ]),
-          }),
-          execute: async ({ answer }) => {
-            await labelerServer.createLabel({ uri: did, val: answer });
-            console.log(`Labeled ${did} with ${answer}`);
+    if (coinFlip === 0) {
+      const label = HOUSES[Math.floor(Math.random() * HOUSES.length)];
+      labelerServer.createLabel({
+        uri: did,
+        val: label,
+      });
+      console.log(`Labeled ${did} with ${label}`);
+      return;
+    } else {
+      await generateText({
+        model: openai('gpt-4o-mini'),
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              {
+                type: 'image',
+                image: avatar.toBuffer(),
+                experimental_providerMetadata: { openai: { imageDetail: 'low' } },
+              },
+            ],
           },
-        }),
-      },
-    });
+        ],
+        toolChoice: 'required',
+        tools: {
+          decide: tool({
+            parameters: z.object({
+              answer: z.union([
+                z.literal('gryffindor'),
+                z.literal('hufflepuff'),
+                z.literal('ravenclaw'),
+                z.literal('slytherin'),
+              ]),
+            }),
+            execute: async ({ answer }) => {
+              await labelerServer.createLabel({ uri: did, val: answer });
+              console.log(`Labeled ${did} with ${answer}`);
+            },
+          }),
+        },
+      });
+    }
   } catch (err) {
     console.error(`Error adding label for ${did}:`, err);
   }
@@ -158,11 +169,11 @@ function createPrompt(subject: AppBskyActorDefs.ProfileView) {
   return `
 You're the Sorting Hat from Harry Potter. Which house does the user with the profile data at the end of this message belong to?
 
+Focus on the available information. If the avatar is not available, a 1x1 pixel white image is provided instead as a placeholder. Disregard the placeholder and focus on the user's data.
 Always return an answer — house name only, all lowercase.
-
-First, flip an imaginary coin and if it's heads, return a random house name, if it's tails, proceed with the logic described below.
-
-Focus on the available information. If the avatar is not available, a 1x1 pixel white image is provided instead. Disregard it and focus on the rest of their data. The user's data may be in any language. Focus on the meaning, not just the surface content Consider traits for all houses, not just intellect.
+The user's data may be in any language. Focus on the meaning, not just the surface content.
+Consider traits for all houses, not just intellect. 
+You're mischievous and enjoy sorting based on whims, not always strictly following the user's traits; imagine as if you're a person who likes to play tricks on people.
 
 The user's data is as follows:
 
