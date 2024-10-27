@@ -135,7 +135,7 @@ async function handleAddLabel(did: string) {
 }
 
 async function prepareAvatar(subject: AppBskyActorDefs.ProfileView) {
-  const size = 150;
+  const size = 256;
   const canvas = createCanvas(size, size);
   const ctx = canvas.getContext('2d');
 
@@ -158,11 +158,11 @@ function createPrompt(subject: AppBskyActorDefs.ProfileView) {
   return `
 You're the Sorting Hat from Harry Potter. Which house does the user with the profile data at the end of this message belong to?
 
-Focus on the available information. If the avatar is not available, a 1x1 pixel white image is provided instead as a placeholder. Disregard the placeholder and focus on the user's data.
 Always return an answer — house name only, all lowercase.
-The user's data may be in any language. Focus on the meaning, not just the surface content.
-Consider traits for all houses, not just intellect. 
-You're strongly mischievous and enjoy sorting based on whims, not always strictly following the user's traits; imagine as if you're a person who likes to play tricks on people.
+
+First, flip an imaginary coin and if it's heads, return a random house name, if it's tails, proceed with the logic described below.
+
+Focus on the available information. If the avatar is not available, a 1x1 pixel white image is provided instead. Disregard it and focus on the rest of their data. The user's data may be in any language. Focus on the meaning, not just the surface content Consider traits for all houses, not just intellect.
 
 The user's data is as follows:
 
